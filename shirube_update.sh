@@ -1,0 +1,1 @@
+git pull https://github.com/tamane-g/Shirube.git

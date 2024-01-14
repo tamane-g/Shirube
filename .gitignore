@@ -1,5 +1,5 @@
 *.log
-/latest_news.txt
+*.txt
 /scd_change.json
 
 /Python-3.12.0/

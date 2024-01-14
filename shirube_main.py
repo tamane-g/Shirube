@@ -18,7 +18,7 @@ from discord.ext import tasks,commands
 silent = True
 
 # daemonで起動する場合True, 直接起動ならFalse
-daemon = False
+daemon = True
 
 # GPTの設定
 gpt_model      = "gpt-3.5-turbo"
@@ -57,7 +57,6 @@ async def on_ready():
     
     if not silent:
         await all_guild_send(client, login_message)
-
     await check_news(client)
 
 # 終了時メッセージ
