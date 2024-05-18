@@ -8,9 +8,9 @@ import discord
 import datetime
 import habachen
 from openai import OpenAI
-import shirube_schedule as scd
-from shirube_module import *
 from typing import Literal
+from shirube_module import *
+import shirube_schedule as scd
 from discord.ext import tasks,commands
 
 #Trueで起動・終了時全サーバーへの一斉送信を行わなくなる
@@ -35,7 +35,7 @@ bot            = discord.app_commands.CommandTree(client)
 # 起動時メッセージ
 @client.event
 async def on_ready():
-    print("logd in\n")
+    print("logged in\n")
         
     login_time = datetime.datetime.now()
     if login_time.hour < 5:
@@ -253,9 +253,18 @@ async def wikipedia_com(ctx: discord.Interaction, arg: str):
 @bot.command(name="google", description="導ちゃんがGoogleで調べてくれます")
 @discord.app_commands.describe(arg="検索内容")
 async def google_com(ctx: discord.Interaction, arg: str):
-    await ctx.response.defer()
-    sent = search_google(arg)
-    await ctx.followup.send(sent)
+    try:
+        await ctx.response.defer()
+        sent = search_google(arg)
+    except Exception as e:
+        sent = "思考過程でエラーが発生しました。管理者は確認をお願いします。(エラー名：" + str(type(e)) + ")"
+        print("== Error ==")
+        print("    Type: " + str(type(e)))
+        print("    Args: " + str(e.args))
+        print(" Message: " + str(e) + "\n")
+        await ctx.followup.send(sent)
+    else:
+        await ctx.followup.send(sent)
 
 # parrotコマンド
 @bot.command(name="parrot", description="導ちゃんがオウム返しします")
@@ -271,11 +280,13 @@ async def talk_com(ctx: discord.Interaction, arg: str):
     sent = ctx.user.display_name + "「" + arg + "」\n\n"
     print(sent)
     await ctx.response.defer()
-    gpt_prompt.append({"role": "user", "content": arg})
-    if len(gpt_prompt)>6:
-        print("deleted log prompt \"" + str(gpt_prompt.pop(3)) + "\".")
+    gpt_prompt_buf = gpt_prompt.copy()
+    gpt_history_buf = gpt_history_load(str(ctx.guild_id))
+    if gpt_history_buf != None:
+        gpt_prompt_buf += gpt_history_buf
+    gpt_prompt_buf.append({"role": "user", "content": arg})
     try:
-        response = client_gpt.chat.completions.create(model=gpt_model, messages=gpt_prompt)
+        response = client_gpt.chat.completions.create(model=gpt_model, messages=gpt_prompt_buf)
     except Exception as e:
         sent = "思考過程でエラーが発生しました。管理者は確認をお願いします。(エラー名：" + str(type(e)) + ")"
         print("== Error ==")
@@ -284,6 +295,8 @@ async def talk_com(ctx: discord.Interaction, arg: str):
         print(" Message: " + str(e) + "\n")
     else:
         sent += response.choices[0].message.content.strip()
+        gpt_history_save(str(ctx.guild_id), arg, response.choices[0].message.content)
+        print(gpt_prompt_buf)
         print(sent)
 
     if not sent == "":

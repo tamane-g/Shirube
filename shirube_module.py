@@ -1,12 +1,13 @@
 import re
 import sys
+import json
 import discord
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import unquote
 
 # 全サーバーへのメッセージ送信
-async def all_guild_send(client, message):
+async def all_guild_send(client, message, files):
     for guild in client.guilds:
         channel = channel_search(guild)
         if channel:
@@ -24,24 +25,26 @@ def channel_search(guild):
 # 高専の最新ニュースを取得
 # latest_news.txtにyyyyMMddを格納
 async def check_news(client):
-    res = requests.get('https://www.tomakomai-ct.ac.jp/news')
-    soup = BeautifulSoup(res.text, 'html.parser')
-    res = requests.get(soup.find('li', class_='news_item').find('a').get('href'))
-    soup = BeautifulSoup(res.text, 'html.parser')
-    news_title = soup.find('h1').get_text()
-    news_date = soup.find('span', class_='date').get_text().strip()
-    news_date_num = int(news_date.replace(".", ""))
-    news_texts = soup.find(attrs={'class':['element_grp_text','element_grp_link']}).find_all(['a','p'])
+    res             = requests.get('https://www.tomakomai-ct.ac.jp/news')
+    soup            = BeautifulSoup(res.text, 'html.parser')
+    res             = requests.get(soup.find('li', class_='news_item').find('a').get('href'))
+    soup            = BeautifulSoup(res.text, 'html.parser')
+    news_title      = soup.find('h1', class_="news_single_ttl").get_text().strip()
+    news_date       = soup.find('span', class_='date').get_text().strip()
+    news_date_num   = int(news_date.replace(".", ""))
+    news_texts      = soup.find(attrs={'class':['element_grp_text','element_grp_link']}).find_all(['a','p'])
+    news_images     = soup.find(class_="img_gallery").find_all('a')
     
     with open("latest_news.txt", "r") as f:
         late_date_num = int(f.read())
     
     if(news_date_num > late_date_num):
         sent  = "苫小牧高専ホームページのお知らせが更新されました。\nURL: https://www.tomakomai-ct.ac.jp/news\n======================================\n"
-        sent += news_title + news_date + "\n"
+        sent += news_title + "\n\n  " + news_date + "\n"
         for text in news_texts:
             sent += text.get_text() + "\n"
-
+        for image in news_images:
+            sent += "https://www.tomakomai-ct.ac.jp/" + image.get('href')
         print(str(late_date_num) + " => " + str(news_date_num))
         with open("latest_news.txt", "w") as f:
             f.write(str(news_date_num))
@@ -57,7 +60,7 @@ def search_google(searchwords):
             print(load_url)
             html = requests.get(load_url)
             soup = BeautifulSoup(html.content, "html.parser")
-            link_title = soup.select(".kCrYT > a")
+            link_title = soup.select(".egMi0 > a")
             result = "了解いたしました。\n以下が「" + searchwords + "」の検索結果上位3サイトです。\n======================================\n"
             length = len(link_title) if len(link_title) < 3 else 3 
             for i in range(length):
@@ -86,7 +89,7 @@ def search_wiki(searchwords):
         html = requests.get(result_url)
         soup = BeautifulSoup(html.content, "html.parser")
         if soup.select(".firstHeading")[0].get_text() == "検索結果":
-            result += "検索の結果wikipediaにそのような項目はありませんでした。\nwikipedia検索結果上位に該当する項目は以下です。\n======================================\n"
+            result = "検索の結果wikipediaにそのような項目はありませんでした。\nwikipedia検索結果上位に該当する項目は以下です。\n======================================\n"
             link_title = soup.select("div.mw-search-result-heading > a")
             length = len(link_title) if len(link_title) < 3 else 3 
             if length == 0:
@@ -103,3 +106,28 @@ def search_wiki(searchwords):
         return result
     else:
         return "検索対象を指定してください。"
+
+# サーバーごとにtalkの履歴を保存（最新10件まで）
+# gpt_dict[guildid][0~9] = {"role":"user" or "assistant", "content":message}
+def gpt_history_save(guildid:str, user_message:str, gpt_message:str):
+    with open("gpt_history.json", 'r') as f:
+        gpt_dict = json.load(f)
+        
+    if gpt_dict.get(guildid) != None:
+        if len(gpt_dict[guildid]) > 9:
+            for _ in range(2):
+                print("delete " + str(gpt_dict[guildid].pop(0)))
+    # DMの履歴は保存しない
+    if guildid != None:
+        gpt_dict.setdefault(guildid, [])
+        gpt_dict[guildid].append({"role":"user", "content":user_message})
+        gpt_dict[guildid].append({"role":"assistant", "content":gpt_message})
+    
+    with open("gpt_history.json", 'w') as f:
+        json.dump(gpt_dict, f, indent=2)
+        
+def gpt_history_load(guildid:str):
+    with open("gpt_history.json", 'r') as f:
+        gpt_dict = json.load(f)
+
+    return gpt_dict.get(guildid)    
