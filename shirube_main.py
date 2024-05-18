@@ -11,7 +11,6 @@ from openai import OpenAI
 import shirube_schedule as scd
 from shirube_module import *
 from typing import Literal
-from discord import app_commands
 from discord.ext import tasks,commands
 
 #Trueで起動・終了時全サーバーへの一斉送信を行わなくなる
@@ -30,7 +29,7 @@ client_gpt     = OpenAI(api_key=os.environ['GPT_TOKEN'])
 bot_token      = os.environ["BOT_TOKEN"]
 intents        = discord.Intents.all()
 client         = discord.Client(intents=intents)
-bot            = app_commands.CommandTree(client)
+bot            = discord.app_commands.CommandTree(client)
 
 
 # 起動時メッセージ

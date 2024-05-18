@@ -29,7 +29,7 @@ async def check_news(client):
     res = requests.get(soup.find('li', class_='news_item').find('a').get('href'))
     soup = BeautifulSoup(res.text, 'html.parser')
     news_title = soup.find('h1').get_text()
-    news_date = soup.find('span', class_='date').get_text()
+    news_date = soup.find('span', class_='date').get_text().strip()
     news_date_num = int(news_date.replace(".", ""))
     news_texts = soup.find(attrs={'class':['element_grp_text','element_grp_link']}).find_all(['a','p'])
     

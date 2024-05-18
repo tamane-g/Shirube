@@ -1,6 +1,6 @@
 *.log
 *.txt
-/scd_change.json
+*.json
 
 /Python-3.12.0/
 /__pycache__/
