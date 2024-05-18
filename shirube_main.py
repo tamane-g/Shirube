@@ -193,23 +193,21 @@ async def schedule_com(ctx: discord.Interaction,
     try:
         if(arg == "today"):
             print(" in: today")
-            day = now.weekday()
         elif(arg == "tomorrow"):
             print(" in: tomorrow")
             now += datetime.timedelta(days=1)
-            day = now.weekday()
         elif(arg == "point"):
             print(" in: point " + str(month) + str(day))
             now = datetime.datetime(now.year, month, day)
-            day = now.weekday()
         else:
             print(" in: " + arg)
             print("out: error")
             raise Exception("引数エラー")
-    except:
-        await ctx.followup.send(sent)
+    except Exception as e:
+        await ctx.followup.send(sent + "（エラー名：" + str(e) + "）")
         return 0
     
+    wday = now.weekday()
     print("out: " + str(day))
 
     sent = "クラスもしくは学年のロールが付与されていません。管理者に問い合わせてください。\n"
@@ -222,18 +220,18 @@ async def schedule_com(ctx: discord.Interaction,
     for k in user_role:
         if k.name in scd.class_name:
             if(arg == "today"):
-                sent="本日"
+                sent = "本日"
             elif(arg == "tomorrow"):
-                sent="明日"
+                sent = "明日"
             elif(arg == "point"):
-                sent=str(month)+"月"+str(day)+"日"
+                sent = str(month)+"月" + str(day) + "日"
             
-            cls_list = scd.read_day(now, scd.year_name.index(j.name), scd.class_name.index(k.name), day)
+            cls_list = scd.read_day(now, scd.year_name.index(j.name), scd.class_name.index(k.name), wday)
             if(cls_list[0]==None):
-                sent += scd.day_name[day] + "曜日は、" + j.name + k.name + "はお休みです。"
+                sent += scd.day_name[wday] + "曜日は、" + j.name + k.name + "はお休みです。"
                 break
             
-            sent += scd.day_name[day] + "曜日の" + j.name + k.name + "の時間割です。\n=============================="
+            sent += scd.day_name[wday] + "曜日の" + j.name + k.name + "の時間割です。\n=============================="
             for l in range(len(cls_list)):
                 if cls_list[l] != None:
                     sent += "\n" + habachen.han_to_zen(str(l+1)) + "時間目：" + str(cls_list[l])
