@@ -26,20 +26,21 @@ def channel_search(guild):
 async def check_news(client):
     res = requests.get('https://www.tomakomai-ct.ac.jp/news')
     soup = BeautifulSoup(res.text, 'html.parser')
-    news = soup.find('div', class_='post') 
-    news_title = news.find('h3').get_text()
-    news_date = news.find('h5').get_text()
-    news_date_num = int(re.sub(r"\D", "", news_date))
-    news_text = news.find('p').get_text().replace("<br>", "/n")
-    elems = soup.select("img")
+    res = requests.get(soup.find('li', class_='news_item').find('a').get('href'))
+    soup = BeautifulSoup(res.text, 'html.parser')
+    news_title = soup.find('h1').get_text()
+    news_date = soup.find('span', class_='date').get_text()
+    news_date_num = int(news_date.replace(".", ""))
+    news_texts = soup.find(attrs={'class':['element_grp_text','element_grp_link']}).find_all(['a','p'])
     
     with open("latest_news.txt", "r") as f:
         late_date_num = int(f.read())
     
     if(news_date_num > late_date_num):
         sent  = "苫小牧高専ホームページのお知らせが更新されました。\nURL: https://www.tomakomai-ct.ac.jp/news\n======================================\n"
-        sent += news_title + news_date + "\n\n" + news_text + "\n"
-        sent += "（ほか画像" + str(len(elems)-1) + "枚）\n" + elems[0].get("src")
+        sent += news_title + news_date + "\n"
+        for text in news_texts:
+            sent += text.get_text() + "\n"
 
         print(str(late_date_num) + " => " + str(news_date_num))
         with open("latest_news.txt", "w") as f:

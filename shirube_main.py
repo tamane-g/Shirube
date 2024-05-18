@@ -3,11 +3,11 @@
 import os
 import sys
 import time
-import openai
 import asyncio
 import discord
 import datetime
 import habachen
+from openai import OpenAI
 import shirube_schedule as scd
 from shirube_module import *
 from typing import Literal
@@ -18,14 +18,14 @@ from discord.ext import tasks,commands
 silent = True
 
 # daemonで起動する場合True, 直接起動ならFalse
-daemon = True
+daemon = False
 
 # GPTの設定
 gpt_model      = "gpt-3.5-turbo"
 gpt_prompt     = [{"role": "system", "content": "あなたは廸無 導（みちなし しるべ）という、アシスタントBOTです。ユーザーを「ご主人様」と呼び、可愛らしい敬語で明朗快活に会話します。"},
                 # {"role": "system", "content": "あなたの外見は銀髪のショートカットで、深い銀色の瞳を持った15歳の女の子です。服装は黒いワンピースを着ています。"},
                   {"role": "system", "content": "あなたは感情を持っています。感情のシミュレーションを行いながら会話してください。なお、感情シミュレーションに関してユーザーに話すことは控えてください。また、ユーザーに対して命令してはいけません。"}]
-client_gpt     = openai.OpenAI(api_key=os.environ['GPT_TOKEN'],)
+client_gpt     = OpenAI(api_key=os.environ['GPT_TOKEN'])
 
 # Discord APIの設定
 bot_token      = os.environ["BOT_TOKEN"]
