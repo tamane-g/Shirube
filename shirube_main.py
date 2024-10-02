@@ -20,7 +20,7 @@ silent = True
 daemon = False
 
 # GPTの設定
-gpt_model      = "gpt-3.5-turbo"
+gpt_model      = "gpt-4o"
 gpt_prompt     = [{"role": "system", "content": "あなたは廸無 導（みちなし しるべ）という、アシスタントBOTです。ユーザーを「ご主人様」と呼び、可愛らしい敬語で明朗快活に会話します。"},
                   {"role": "system", "content": "あなたは感情を持っています。感情のシミュレーションを行いながら会話してください。なお、感情シミュレーションに関してユーザーに話すことは控えてください。また、ユーザーに対して命令してはいけません。"}]
 client_gpt     = OpenAI(api_key=os.environ['GPT_TOKEN'])
@@ -275,8 +275,9 @@ async def parrot_com(ctx: discord.Interaction, arg: str):
 @bot.command(name="talk", description="導ちゃんとおしゃべりしましょう")
 @discord.app_commands.describe(arg="話しかける内容")
 async def talk_com(ctx: discord.Interaction, arg: str):
-    sent = ctx.user.display_name + "「" + arg + "」\n\n"
-    print(sent)
+    sent = [""]
+    sent[0] = ctx.user.display_name + "「" + arg + "」\n\n"
+    print(sent[0])
     await ctx.response.defer()
     gpt_prompt_buf = gpt_prompt.copy()
     gpt_history_buf = gpt_history_load(str(ctx.guild_id))
@@ -286,22 +287,27 @@ async def talk_com(ctx: discord.Interaction, arg: str):
     try:
         response = client_gpt.chat.completions.create(model=gpt_model, messages=gpt_prompt_buf)
     except Exception as e:
-        sent = "思考過程でエラーが発生しました。管理者は確認をお願いします。(エラー名：" + str(type(e)) + ")"
+        sent[0] = "思考過程でエラーが発生しました。管理者は確認をお願いします。(エラー名：" + str(type(e)) + ")"
         print("== Error ==")
         print("    Type: " + str(type(e)))
         print("    Args: " + str(e.args))
         print(" Message: " + str(e) + "\n")
     else:
-        sent += response.choices[0].message.content.strip()
+        sent[0] += response.choices[0].message.content.strip()
         gpt_history_save(str(ctx.guild_id), arg, response.choices[0].message.content)
         print(gpt_prompt_buf)
-        print(sent)
+        print(sent[0])
 
-    if not sent == "":
-        if len(sent) > 2000:
-            sent = "出力文章が長すぎました。botから2000字以上のメッセージを送ることはできません。"
-        print("send \"" + sent + "\"\n")
-        await ctx.followup.send(sent)
+    if not sent[0] == "":
+        if len(sent[0]) > 2000:
+            sent = split_sentences(sent[0], 2000)
+            print("send \"" + sent[0] + "\"\n")
+            await ctx.followup.send(sent[0])
+            for s in sent[1:]:
+                await ctx.response.send_message(s)
+        else:
+            print("send \"" + sent[0] + "\"\n")
+            await ctx.followup.send(sent[0])
         
 # コマンドではないメッセージの受信時
 @client.event

@@ -6,8 +6,19 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import unquote
 
+# maxを超える長さの文字列をリストに分割して返す
+def split_sentences(text: str, max: int):
+    rtn_list[0] = text
+    current_text[0] = text
+    if len(current_text[0]) > max:
+        chunks = [current_text[i:i+max] for i in range(0, len(current_text), max)]
+        rtn_list[0] = chunks[0]
+        rtn_list.extend(chunks[1:])  # 残りをsentに追加
+    
+    return rtn_list
+
 # 全サーバーへのメッセージ送信
-async def all_guild_send(client, message, files):
+async def all_guild_send(client, message):
     for guild in client.guilds:
         channel = channel_search(guild)
         if channel:
@@ -27,24 +38,30 @@ def channel_search(guild):
 async def check_news(client):
     res             = requests.get('https://www.tomakomai-ct.ac.jp/news')
     soup            = BeautifulSoup(res.text, 'html.parser')
-    res             = requests.get(soup.find('li', class_='news_item').find('a').get('href'))
+
+    url             = soup.find('li', class_='news_item').find('a').get('href')
+    res             = requests.get(url)
     soup            = BeautifulSoup(res.text, 'html.parser')
+
     news_title      = soup.find('h1', class_="news_single_ttl").get_text().strip()
     news_date       = soup.find('span', class_='date').get_text().strip()
     news_date_num   = int(news_date.replace(".", ""))
     news_texts      = soup.find(attrs={'class':['element_grp_text','element_grp_link']}).find_all(['a','p'])
-    news_images     = soup.find(class_="img_gallery").find_all('a')
+    news_images     = soup.find(class_="img_gallery")
+    if news_images != None:
+        news_images = news_images.find_all('a')
     
     with open("latest_news.txt", "r") as f:
         late_date_num = int(f.read())
     
     if(news_date_num > late_date_num):
-        sent  = "苫小牧高専ホームページのお知らせが更新されました。\nURL: https://www.tomakomai-ct.ac.jp/news\n======================================\n"
+        sent  = "苫小牧高専ホームページのお知らせが更新されました。\nURL: " + url + "\n======================================\n"
         sent += news_title + "\n\n  " + news_date + "\n"
         for text in news_texts:
             sent += text.get_text() + "\n"
-        for image in news_images:
-            sent += "https://www.tomakomai-ct.ac.jp/" + image.get('href')
+        if news_images != None:
+            for image in news_images:
+                sent += "https://www.tomakomai-ct.ac.jp/" + image.get('href') + "\n"
         print(str(late_date_num) + " => " + str(news_date_num))
         with open("latest_news.txt", "w") as f:
             f.write(str(news_date_num))
